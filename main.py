@@ -3,7 +3,12 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 import telebot
+import re
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # =========================
 # Flask + Telegram Webhook Bot
@@ -30,6 +35,15 @@ file_h.setLevel(LOG_LEVEL)
 file_h.setFormatter(formatter)
 logger.addHandler(file_h)
 
+# =========================
+# HELPER FUNCTIONS
+# =========================
+def convert_markdown_links_to_html(text):
+    """Convert markdown-style links (text)[url] to HTML anchor tags <a href="url">text</a>"""
+    pattern = r'\(([^\)]+)\)\[([^\]]+)\]'
+    replacement = r'<a href="\2">\1</a>'
+    return re.sub(pattern, replacement, text)
+
 TOKEN = os.getenv("API_TOKEN", "none")
 if (TOKEN == "none"):
     logger.error("API_TOKEN environment variable not set. Exiting.")
@@ -41,13 +55,15 @@ DATA_PATH = "data"
 # MENUS
 # =========================
 menus = {
+    "menu0":{
+        "title": "ℹ️ تعرف علينا"
+    },
     "menu1": {
         "title": "🏫 القبول والتسجيل",
         "items": [
             "📅 الخط الزمني للفصول",
             "🕐 مواعيد القبول والتسجيل للفصل القادم",
             "📝 التقديم اليدوي للكلية",
-            "ℹ️ تعرف علينا",
             "📖 أقسام الكلية",
             "🌙 الدبلوم المسائي",
             "📘 معادلة مقررات الكلية",
@@ -91,7 +107,7 @@ menus = {
             "📲 التواصل مع رايات",
             "📘 معلومات مهمة للمستجدين والمستمرين",
             "🆕 معلومات مهمة للمستجدين",
-            "🗓️ التقويم التدريبي 1446–1447",
+            "🗓️ التقويم التدريبي",
         ],
     },
     "menu5": {
@@ -148,9 +164,10 @@ def submenu(menu_key):
     This avoids long/truncated callback_data and keeps behavior consistent with submenu_inline.
     """
     markup = InlineKeyboardMarkup()
-    for idx, item in enumerate(menus[menu_key]["items"]):
-        cb = f"item|{menu_key}|{idx}"
-        markup.add(InlineKeyboardButton(item, callback_data=cb))
+    if "items" in menus[menu_key]:
+        for idx, item in enumerate(menus[menu_key]["items"]):
+            cb = f"item|{menu_key}|{idx}"
+            markup.add(InlineKeyboardButton(item, callback_data=cb))
     markup.add(InlineKeyboardButton("🔙 رجوع", callback_data="back_main"))
     return markup
 
@@ -160,9 +177,10 @@ def submenu_inline(menu_key):
     (keeps the reply keyboard visible). Uses short callback_data in the form: item|<menu_key>|<index>
     """
     markup = InlineKeyboardMarkup()
-    for idx, item in enumerate(menus[menu_key]["items"]):
-        cb = f"item|{menu_key}|{idx}"
-        markup.add(InlineKeyboardButton(item, callback_data=cb))
+    if "items" in menus[menu_key]:
+        for idx, item in enumerate(menus[menu_key]["items"]):
+            cb = f"item|{menu_key}|{idx}"
+            markup.add(InlineKeyboardButton(item, callback_data=cb))
     # add a close button to remove the inline menu message
     markup.add(InlineKeyboardButton("🔙 إغلاق", callback_data=f"close|{menu_key}"))
     return markup
@@ -219,6 +237,11 @@ def handle_message(message):
     # this keeps the main reply keyboard visible while the submenu appears as an inline keyboard
     if text in title_to_key:
         key = title_to_key[text]
+        if "items" not in menus[key]:
+            # no submenu, send folder content directly
+            logger.info("sending folder content for menu_key=%s", key)
+            send_folder_content(message.chat.id, menus[key]["title"])
+            return
         bot.send_message(message.chat.id, menus[key]["title"], reply_markup=submenu_inline(key))
         return
 
@@ -260,7 +283,9 @@ def send_folder_content(chat_id, item_name):
         if file.endswith(".txt"):
             with open(path, "r", encoding="utf-8") as f:
                 try:
-                    bot.send_message(chat_id, f.read().strip())
+                    text_content = f.read().strip()
+                    text_content = convert_markdown_links_to_html(text_content)
+                    bot.send_message(chat_id, text_content, parse_mode="HTML")
                 except Exception as e:
                     logger.exception("failed to send text file %s to chat_id=%s: %s", path, chat_id, e)
 
@@ -313,6 +338,12 @@ def inline_callback(call):
             bot.answer_callback_query(call.id, "خطأ في بيانات الزر")
             return
 
+        if "items" not in menus[menu_key]:
+            # no submenu, send folder content directly
+            send_folder_content(call.message.chat.id, menus[menu_key]["title"])
+            bot.answer_callback_query(call.id)
+            return
+        
         # edit message to show submenu
         bot.edit_message_text(
             menus[menu_key]["title"],
@@ -371,12 +402,19 @@ def telegram_webhook():
 if __name__ == "__main__":
     import requests
 
+    # For local development with ngrok:
+    # 1. Install: pip install pyngrok
+    # 2. Run: ngrok http 5000
+    # 3. Copy the URL and set WEBHOOK_URL below
+    
+    # WEBHOOK_URL = "https://your-ngrok-url.ngrok.io/" + TOKEN  # Replace with your ngrok URL
+    
+    # Or use your public Render URL for production:
     WEBHOOK_URL = "https://telegram-bot-1-gjjw.onrender.com/" + TOKEN
-
     try:
         requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
         requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
     except Exception as e:
         print("Failed to set webhook:", e)
 
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)    

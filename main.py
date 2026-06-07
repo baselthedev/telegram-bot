@@ -137,6 +137,18 @@ menus = {
     },
 }
 
+# =========================
+# command system 
+# =========================
+INFO_ITEM = "ℹ️ تعرف علينا"
+items_list = [INFO_ITEM]
+_seen = {INFO_ITEM}
+for _menu in menus.values():
+    for _it in _menu.get("items", []):
+        if _it not in _seen:
+            _seen.add(_it)
+            items_list.append(_it)
+
 # ===== إنشاء القائمة الرئيسية =====
 def main_menu():
     # Reply keyboard with one button per row (fixed buttons)
@@ -223,6 +235,20 @@ def start(message):
     except Exception as e:
         # if setting the reply keyboard fails, ignore — the inline menu still works
         logger.exception("failed to set reply keyboard for chat_id=%s: %s", message.chat.id, e)
+
+# ===== التعامل مع أوامر /cmd_N =====
+@bot.message_handler(regexp=r"^/cmd_\d+(@\w+)?$")
+def handle_cmd_slash(message):
+    raw = message.text.split("@", 1)[0]  # strip @botname suffix
+    try:
+        idx = int(raw.replace("/cmd_", ""))
+        item_name = items_list[idx]
+    except Exception:
+        bot.send_message(message.chat.id, "أمر غير معروف")
+        return
+    logger.info("slash command -> item '%s'", item_name)
+    send_folder_content(message.chat.id, item_name)
+
 
 # ===== التعامل مع الضغط على الأزرار =====
 @bot.message_handler(func=lambda message: True)
@@ -417,4 +443,27 @@ if __name__ == "__main__":
     except Exception as e:
         print("Failed to set webhook:", e)
 
-    app.run(host="0.0.0.0", port=5000)    
+    # Register /cmd_N slash commands with Telegram (appears in the / menu)
+    try:
+        cmds = [telebot.types.BotCommand(f"cmd_{idx}", item[:256])
+                for idx, item in enumerate(items_list)][:100]
+        scopes = [
+            None,
+            telebot.types.BotCommandScopeDefault(),
+            telebot.types.BotCommandScopeAllPrivateChats(),
+            telebot.types.BotCommandScopeAllGroupChats(),
+            telebot.types.BotCommandScopeAllChatAdministrators(),
+        ]
+        for sc in scopes:
+            try:
+                if sc is None:
+                    bot.set_my_commands(cmds)
+                else:
+                    bot.set_my_commands(cmds, scope=sc)
+            except Exception as e:
+                print(f"set_my_commands failed for scope {sc}: {e}")
+        print(f"Registered {len(cmds)} slash commands across all scopes.")
+    except Exception as e:
+        print("Failed to register commands:", e)
+
+    app.run(host="0.0.0.0", port=5000)

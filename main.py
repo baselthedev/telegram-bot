@@ -138,13 +138,71 @@ menus = {
 }
 
 # =========================
-# command system 
+# command system
+# (sections used ONLY for /cmd_N slash command list — same as bot.py2.py)
+# message navigation still uses the menus dict above
 # =========================
+_sections_for_cmds = {
+    "sec_a": {
+        "items": [
+            "📅 الخط الزمني للفصول",
+            "🕐 مواعيد القبول والتسجيل للفصل القادم",
+            "📝 التقديم اليدوي للكلية",
+            "📖 أقسام الكلية",
+            "🌙 الدبلوم المسائي",
+            "📘 معادلة مقررات الكلية",
+            "🏅 متفوقو الكلية",
+            "🧮 إرشادات الاختبارات والتقييمات",
+            "📖 دليل التصنيف",
+            "📑 تقرير المقررات المتبقية",
+            "🤝 التدريب التعاوني",
+            "🎓 برنامج دعم مشاريع التخرج",
+            "🧭 مكتب التنسيق الوظيفي",
+            "📝 إرشادات الاختبارات ولتقييمات2",
+        ],
+    },
+    "sec_b": {
+        "items": [
+            "📋 الخطط التدريبية",
+            "📧 بريد المتدرب الرسمي",
+            "💰 المكافأة",
+            "⚠️ آلية الاعتراض",
+            "🚫 الحرمان وحالات الإنذار",
+            "🚫 الحرمان وحالات الإنذار 1",
+            "📗 دليل المتدرب",
+            "💳 الشؤون المالية للمتدرب",
+            "🧰 أدوات مساعدة للمتدرب",
+            "📝 تقديم شكوى أو اعتراض من المتدرب",
+            "🤲 خدمة المجتمع",
+            "🏅 متفوقو المؤسسة",
+        ],
+    },
+    "sec_c": {
+        "items": [
+            "🌐 منصة خدمات المتدربين ومنصة رايات",
+            "💼 منصة المكتب Office 365 ومنصة البريد بيرود",
+            "📲 التواصل مع رايات",
+            "📘 معلومات مهمة للمستجدين والمستمرين",
+            "🆕 معلومات مهمة للمستجدين",
+            "التقويم التدريبي",
+            "📨 التواصل مع الكلية",
+            "📞 التواصل مع أقسام الكلية",
+            "🚗 مواقف المتدربين داخل حرم الكلية",
+            "🎓 الأكاديميات الدولية",
+            "📜 الشهادات الاحترافية والأكاديميات الدولية",
+            "🏠 سكن الكلية",
+            "📊 طريقة عرض الجدول في رايات",
+            "📄 برشور قديم",
+            "📄 1برشور قديم",
+        ],
+    },
+}
+
 INFO_ITEM = "ℹ️ تعرف علينا"
 items_list = [INFO_ITEM]
 _seen = {INFO_ITEM}
-for _menu in menus.values():
-    for _it in _menu.get("items", []):
+for _sec in _sections_for_cmds.values():
+    for _it in _sec["items"]:
         if _it not in _seen:
             _seen.add(_it)
             items_list.append(_it)
@@ -436,7 +494,7 @@ if __name__ == "__main__":
     # WEBHOOK_URL = "https://your-ngrok-url.ngrok.io/" + TOKEN  # Replace with your ngrok URL
     
     # Or use your public Render URL for production:
-    WEBHOOK_URL = "https://telegram-bot-9mzx.onrender.com/" + TOKEN
+    WEBHOOK_URL = "https://telegram-bot-1-gjjw.onrender.com/" + TOKEN
     try:
         requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
         requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")

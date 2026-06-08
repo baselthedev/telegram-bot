@@ -414,7 +414,7 @@ if __name__ == "__main__":
     # WEBHOOK_URL = "https://your-ngrok-url.ngrok.io/" + TOKEN  # Replace with your ngrok URL
     
     # Or use your public Render URL for production:
-    WEBHOOK_URL = "https://telegram-bot-1-gjjw.onrender.com/" + TOKEN
+    WEBHOOK_URL = "https://telegram-bot-9mzx.onrender.com/" + TOKEN
     try:
         requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
         requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
